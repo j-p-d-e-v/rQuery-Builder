@@ -46,6 +46,45 @@ Exploring support for SurrealDB's query syntax and data model.
 
 ---
 
+## Development Setup
+
+To improve compilation times, it's recommended to use [`sccache`](https://github.com/mozilla/sccache) as a compiler cache.
+
+### 📦 Installing `sccache`
+
+#### On Linux/macOS (via Cargo):
+
+```bash
+cargo install sccache
+```
+
+#### On macOS (via Homebrew):
+
+```bash
+brew install sccache
+```
+
+#### On Windows (via Chocolatey):
+
+```powershell
+choco install sccache
+```
+
+Then, configure Cargo to use `sccache` by adding the following to `.cargo/config.toml`:
+
+```toml
+[build]
+rustc-wrapper = "sccache"
+```
+
+You can verify it's working with:
+
+```bash
+sccache --show-stats
+```
+
+---
+
 ## Contributing
 
 Contributions are welcome! Whether it's a feature request, bug report, or code contribution, feel free to open an issue or submit a pull request.
