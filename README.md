@@ -17,6 +17,7 @@ The goal of this project is to simplify the construction of common SQL queries a
 
 ### 🚧 PostgreSQL Support
 
+- [ ] Table Columns Query
 - [ ] `SELECT` *(Work in Progress)*
 - [ ] `SELECT` with `JOIN`s
 - [ ] `SELECT` using `JSONB` fields
