@@ -1,6 +1,27 @@
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum JoinKind {
+    Inner,
+    Left,
+    Right,
+    Full,
+    Cross,
+}
+
+impl std::fmt::Display for JoinKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let value = match self {
+            Self::Inner => "INNER",
+            Self::Left => "LEFT",
+            Self::Right => "RIGHT",
+            Self::Full => "FULL",
+            Self::Cross => "CROSS",
+        };
+        write!(f, "{value}")
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct JoinItem {

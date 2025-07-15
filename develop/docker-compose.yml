@@ -1,0 +1,20 @@
+services:
+  rqb_dev_pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - 7080:80
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=dev@dev.com
+      - PGADMIN_DEFAULT_PASSWORD=secretpassword123
+    tty: true
+  rqb_dev_postgres_db:
+    image: postgres
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_PASSWORD=secretpassword123
+      - POSTGRES_USER=devuser
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - "/data:/var/lib/postgresql/data"
+    tty: true

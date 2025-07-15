@@ -1,10 +1,11 @@
-use crate::postgres::{OrderByBuilder, OrderByItem, WhereBuilder, WhereClause};
+use crate::postgres::{ExpressionBuilder, OrderByBuilder, OrderByItem, WhereBuilder};
 use anyhow::anyhow;
 use serde_json::Value;
 
 #[derive(Clone, Debug)]
 pub struct SelectBuilder {
     pub table: String,
+    pub table_alias: String,
     pub fields: Vec<String>,
     pub limit: Option<usize>,
     pub offset: Option<usize>,
@@ -14,9 +15,10 @@ pub struct SelectBuilder {
 }
 
 impl SelectBuilder {
-    pub fn new(table: &str) -> Self {
+    pub fn new(table: &str, table_alias: &str) -> Self {
         Self {
             table: table.to_string(),
+            table_alias: table_alias.to_string(),
             fields: Vec::new(),
             limit: None,
             offset: None,
@@ -26,7 +28,7 @@ impl SelectBuilder {
         }
     }
 
-    pub fn set_where(&mut self, values: Vec<WhereClause>) -> &mut Self {
+    pub fn set_where(&mut self, values: Vec<ExpressionBuilder>) -> &mut Self {
         if !values.is_empty() {
             let mut result = WhereBuilder::build(values);
             self.where_statement = Some(result.statement);
@@ -41,7 +43,11 @@ impl SelectBuilder {
         if values.is_empty() {
             return Err(anyhow!("select field value is empty"));
         }
-        let mut fields: Vec<String> = values.into_iter().map(|value| value.to_string()).collect();
+        let table_alias = &self.table_alias;
+        let mut fields: Vec<String> = values
+            .into_iter()
+            .map(|value| format!("{table_alias}.{value}"))
+            .collect();
         self.fields.append(&mut fields);
         Ok(self)
     }
@@ -73,7 +79,10 @@ impl SelectBuilder {
         } else {
             self.fields.join(", ")
         };
-        let mut statement: String = format!("SELECT {} FROM {}", fields, self.table);
+        let mut statement: String = format!(
+            "SELECT {} FROM {} as {}",
+            fields, self.table, self.table_alias
+        );
 
         if let Some(value) = &self.where_statement {
             statement = format!("{statement} {value}");
@@ -97,33 +106,37 @@ pub mod test_select_builder {
     use serde_json::Number;
 
     use super::*;
-    use crate::postgres::{Condition, Operator, Sequence, WhereClauseItem};
+    use crate::postgres::{ConditionBuilder, Logic, Operator, Sequence};
 
     #[tokio::test]
     async fn test_select_builder() {
-        let builder = SelectBuilder::new("mytable");
+        let builder = SelectBuilder::new("mytable", "t");
         let result = builder.build();
         assert!(result.is_ok(), "{:?}", result.err());
-        assert_eq!(result.unwrap(), "SELECT * FROM mytable");
+        assert_eq!(result.unwrap(), "SELECT * FROM mytable as t");
 
-        let mut builder = SelectBuilder::new("mytable");
+        let mut builder = SelectBuilder::new("mytable", "t");
         let result = builder.set_fields(vec![]);
         assert!(result.is_err(), "expecting error for fields");
         let result = builder.build();
         assert!(result.is_ok(), "{:?}", result.err());
-        assert_eq!(result.unwrap(), "SELECT * FROM mytable");
+        assert_eq!(result.unwrap(), "SELECT * FROM mytable as t");
 
-        let mut builder = SelectBuilder::new("mytable");
+        let mut builder = SelectBuilder::new("mytable", "t");
         let result = builder.set_fields(vec!["myfield1", "myfield2"]);
         assert!(result.is_ok(), "{:?}", result.err());
         let result = builder.build();
         assert!(result.is_ok(), "{:?}", result.err());
-        assert_eq!(result.unwrap(), "SELECT myfield1, myfield2 FROM mytable");
+        assert_eq!(
+            result.unwrap(),
+            "SELECT t.myfield1, t.myfield2 FROM mytable as t"
+        );
 
-        let mut builder = SelectBuilder::new("mytable");
+        let mut builder = SelectBuilder::new("mytable", "t");
         let result = builder.set_fields(vec!["myfield1", "myfield2"]);
         assert!(result.is_ok(), "{:?}", result.err());
         let result = builder.set_order_by(vec![OrderByItem {
+            table_alias: Some("t".to_string()),
             field: "myfield1".to_string(),
             sequence: Sequence::Asc,
         }]);
@@ -132,18 +145,20 @@ pub mod test_select_builder {
         assert!(result.is_ok(), "{:?}", result.err());
         assert_eq!(
             result.unwrap(),
-            "SELECT myfield1, myfield2 FROM mytable ORDER BY myfield1 ASC"
+            "SELECT t.myfield1, t.myfield2 FROM mytable as t ORDER BY t.myfield1 ASC"
         );
 
-        let mut builder = SelectBuilder::new("mytable");
+        let mut builder = SelectBuilder::new("mytable", "t");
         let result = builder.set_fields(vec!["myfield1", "myfield2"]);
         assert!(result.is_ok(), "{:?}", result.err());
         let result = builder.set_order_by(vec![
             OrderByItem {
+                table_alias: None,
                 field: "myfield1".to_string(),
                 sequence: Sequence::Asc,
             },
             OrderByItem {
+                table_alias: None,
                 field: "myfield2".to_string(),
                 sequence: Sequence::Desc,
             },
@@ -153,40 +168,44 @@ pub mod test_select_builder {
         assert!(result.is_ok(), "{:?}", result.err());
         assert_eq!(
             result.unwrap(),
-            "SELECT myfield1, myfield2 FROM mytable ORDER BY myfield1 ASC, myfield2 DESC"
+            "SELECT t.myfield1, t.myfield2 FROM mytable as t ORDER BY myfield1 ASC, myfield2 DESC"
         );
 
-        let mut builder = SelectBuilder::new("mytable");
+        let mut builder = SelectBuilder::new("mytable", "t");
         let result = builder.set_fields(vec!["myfield1", "myfield2"]);
         assert!(result.is_ok(), "{:?}", result.err());
         let result = builder.set_order_by(vec![
             OrderByItem {
+                table_alias: Some("t".to_string()),
                 field: "myfield1".to_string(),
                 sequence: Sequence::Asc,
             },
             OrderByItem {
+                table_alias: Some("t".to_string()),
                 field: "myfield2".to_string(),
                 sequence: Sequence::Desc,
             },
         ]);
         assert!(result.is_ok(), "{:?}", result.err());
         let where_clauses = vec![
-            WhereClauseItem {
+            ConditionBuilder {
+                table_alias: Some("t".to_string()),
                 field: "myfield3".to_string(),
                 operator: Operator::Eq,
                 value: Some(Value::String("MYVALUE".to_string())),
-                condition: None,
+                logic: None,
             },
-            WhereClauseItem {
+            ConditionBuilder {
+                table_alias: Some("t".to_string()),
                 field: "myfield5".to_string(),
                 operator: Operator::IsNull,
                 value: None,
-                condition: Some(Condition::Or),
+                logic: Some(Logic::Or),
             },
         ];
-        let clause1 = WhereClause::build(where_clauses.clone(), None);
+        let clause1 = ExpressionBuilder::build(where_clauses.clone(), None);
         assert!(clause1.is_ok(), "{:?}", clause1.err());
-        let clause2 = WhereClause::build(where_clauses, Some(Condition::And));
+        let clause2 = ExpressionBuilder::build(where_clauses, Some(Logic::And));
         assert!(clause2.is_ok(), "{:?}", clause2.err());
         let result = builder
             .set_where(vec![clause1.unwrap(), clause2.unwrap()])
@@ -196,27 +215,29 @@ pub mod test_select_builder {
         assert!(result.is_ok(), "{:?}", result.err());
         assert_eq!(
             result.unwrap(),
-            "SELECT myfield1, myfield2 FROM mytable WHERE (myfield3 = ? OR myfield5 IS NULL) AND (myfield3 = ? OR myfield5 IS NULL) ORDER BY myfield1 ASC, myfield2 DESC LIMIT 10 OFFSET 0"
+            "SELECT t.myfield1, t.myfield2 FROM mytable as t WHERE (t.myfield3 = ? OR t.myfield5 IS NULL) AND (t.myfield3 = ? OR t.myfield5 IS NULL) ORDER BY t.myfield1 ASC, t.myfield2 DESC LIMIT 10 OFFSET 0"
         );
         assert!(builder.get_values().len() == 2);
 
-        let mut builder = SelectBuilder::new("configuration_items");
+        let mut builder = SelectBuilder::new("configuration_items", "t");
 
-        let where_clause = WhereClause::build(
+        let where_clause = ExpressionBuilder::build(
             vec![
-                WhereClauseItem {
+                ConditionBuilder {
+                    table_alias: Some("t".to_string()),
                     field: "project_id".to_string(),
                     operator: Operator::Eq,
                     value: Some(Value::Number(Number::from_u128(1).unwrap())),
-                    condition: None,
+                    logic: None,
                 },
-                WhereClauseItem {
+                ConditionBuilder {
+                    table_alias: Some("t".to_string()),
                     field: "location_id".to_string(),
                     operator: Operator::In,
                     value: Some(Value::Array(vec![Value::Number(
                         Number::from_u128(1).unwrap(),
                     )])),
-                    condition: Some(Condition::And),
+                    logic: Some(Logic::And),
                 },
             ],
             None,
@@ -229,7 +250,6 @@ pub mod test_select_builder {
             .set_limit(10)
             .set_offset(0)
             .build();
-        //println!("{:?}", result);
-        //println!("{:?}", builder.get_values());
+        assert!(result.is_ok(), "{:?}", result.err());
     }
 }
