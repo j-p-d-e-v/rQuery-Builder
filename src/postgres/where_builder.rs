@@ -69,7 +69,7 @@ pub mod test_where_builder {
             logic: None,
         };
 
-        let result = ConditionBuilder::format(&where_clause);
+        let result = ConditionBuilder::build(&where_clause);
         assert!(result.is_ok(), "{:?}", result.err());
         let result = result.unwrap();
         assert_eq!(result, "myfield1 = ?".to_string());
@@ -82,7 +82,7 @@ pub mod test_where_builder {
             logic: None,
         };
 
-        let result = ConditionBuilder::format(&where_clause);
+        let result = ConditionBuilder::build(&where_clause);
         assert!(result.is_ok(), "{:?}", result.err());
         let result = result.unwrap();
         assert_eq!(result, "myfield1 IN (?)".to_string());

@@ -16,10 +16,7 @@ impl ExpressionBuilder {
     ) -> anyhow::Result<ExpressionBuilder> {
         let mut data: ExpressionBuilder = ExpressionBuilder::default();
         for item in values {
-            let mut condition = ConditionBuilder::format(&item)?;
-            if let Some(logic) = item.logic {
-                condition = format!("{logic} {condition}");
-            }
+            let condition = ConditionBuilder::build(&item)?;
             if data.condition.is_empty() {
                 data.condition = condition;
             } else {
@@ -31,5 +28,41 @@ impl ExpressionBuilder {
         }
         data.logic = logic;
         Ok(data)
+    }
+}
+
+#[cfg(test)]
+pub mod test_expression_builder {
+    use crate::postgres::Operator;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_expression() {
+        let condition1 = ConditionBuilder {
+            table_alias: Some("t".to_string()),
+            field: "myfield1".to_string(),
+            operator: Operator::Eq,
+            value: Some(Value::String("test".to_string())),
+            logic: None,
+        };
+
+        let condition2 = ConditionBuilder {
+            table_alias: Some("t".to_string()),
+            field: "myfield2".to_string(),
+            operator: Operator::Eq,
+            value: Some(Value::String("test".to_string())),
+            logic: Some(Logic::And),
+        };
+
+        let result = ExpressionBuilder::build(vec![condition1, condition2], None);
+        assert!(result.is_ok(), "{:?}", result.err());
+        let result = result.unwrap();
+        assert_eq!(
+            result.condition,
+            "t.myfield1 = ? AND t.myfield2 = ?".to_string()
+        );
+        assert_eq!(result.logic, None);
+        assert!(result.values.len() > 0);
     }
 }

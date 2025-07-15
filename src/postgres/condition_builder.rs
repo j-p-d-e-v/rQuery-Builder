@@ -14,10 +14,6 @@ pub struct ConditionBuilder {
 }
 
 impl ConditionBuilder {
-    pub fn new(data: ConditionBuilder) -> Self {
-        Self { ..data }
-    }
-
     pub fn bind(value: &Value) -> Option<String> {
         match value {
             Value::Array(_) => Some("(?)".to_string()),
@@ -25,7 +21,7 @@ impl ConditionBuilder {
         }
     }
 
-    pub fn format(item: &ConditionBuilder) -> anyhow::Result<String> {
+    pub fn build(item: &ConditionBuilder) -> anyhow::Result<String> {
         let field = &item.field;
         let table_alias = if let Some(value) = &item.table_alias {
             &format!("{value}.")
@@ -41,13 +37,47 @@ impl ConditionBuilder {
         } else {
             None
         };
-        if let Some(value) = value
+        let condition = if let Some(value) = value
             && operator != &Operator::IsNull
             && operator != &Operator::NotNull
         {
-            Ok(format!("{table_alias}{field} {operator} {value}"))
+            format!("{table_alias}{field} {operator} {value}")
         } else {
-            Ok(format!("{table_alias}{field} {operator}"))
+            format!("{table_alias}{field} {operator}")
+        };
+
+        if let Some(logic) = &item.logic {
+            Ok(format!("{logic} {condition}"))
+        } else {
+            Ok(condition)
         }
+    }
+}
+
+#[cfg(test)]
+pub mod test_condition_builder {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_condition() {
+        let result = ConditionBuilder::build(&ConditionBuilder {
+            table_alias: Some("t".to_string()),
+            field: "myfield1".to_string(),
+            operator: Operator::Eq,
+            value: Some(Value::String("test".to_string())),
+            logic: None,
+        });
+        assert!(result.is_ok(), "{:?}", result.err());
+        assert_eq!(result.unwrap(), "t.myfield1 = ?".to_string());
+
+        let result = ConditionBuilder::build(&ConditionBuilder {
+            table_alias: Some("t".to_string()),
+            field: "myfield1".to_string(),
+            operator: Operator::Eq,
+            value: Some(Value::String("test".to_string())),
+            logic: Some(Logic::And),
+        });
+        assert!(result.is_ok(), "{:?}", result.err());
+        assert_eq!(result.unwrap(), "AND t.myfield1 = ?".to_string());
     }
 }
