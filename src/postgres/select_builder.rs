@@ -219,20 +219,20 @@ pub mod test_select_builder {
         );
         assert!(builder.get_values().len() == 2);
 
-        let mut builder = SelectBuilder::new("configuration_items", "t");
+        let mut builder = SelectBuilder::new("orders", "o");
 
         let where_clause = ExpressionBuilder::build(
             vec![
                 ConditionBuilder {
-                    table_alias: Some("t".to_string()),
-                    field: "project_id".to_string(),
+                    table_alias: Some("o".to_string()),
+                    field: "product_id".to_string(),
                     operator: Operator::Eq,
                     value: Some(Value::Number(Number::from_u128(1).unwrap())),
                     logic: None,
                 },
                 ConditionBuilder {
-                    table_alias: Some("t".to_string()),
-                    field: "location_id".to_string(),
+                    table_alias: Some("o".to_string()),
+                    field: "user_id".to_string(),
                     operator: Operator::In,
                     value: Some(Value::Array(vec![Value::Number(
                         Number::from_u128(1).unwrap(),
@@ -245,11 +245,12 @@ pub mod test_select_builder {
         .unwrap();
         let result = builder
             .set_where(vec![where_clause])
-            .set_fields(vec!["ci_number", "name", "project_id"])
+            .set_fields(vec!["id", "user_id", "product_id"])
             .unwrap()
             .set_limit(10)
             .set_offset(0)
             .build();
         assert!(result.is_ok(), "{:?}", result.err());
+        assert_eq!(result.unwrap(),"SELECT o.id, o.user_id, o.product_id FROM orders as o WHERE o.product_id = ? AND o.user_id IN (?) LIMIT 10 OFFSET 0");
     }
 }
