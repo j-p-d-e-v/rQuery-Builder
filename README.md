@@ -1,97 +1,124 @@
-# rQuery Builder (Work In Progress)
+# rQuery Builder (WIP)
 
-**rQuery Builder** is a lightweight and modular SQL query builder designed to generate SQL statements dynamically and programmatically.
+**rQuery Builder** is a lightweight, modular SQL query builder designed to generate SQL statements dynamically and programmatically. It aims to simplify common query construction across various databases—without the heavy abstraction of traditional ORMs.
 
-The goal of this project is to simplify the construction of common SQL queries across different databases, starting with PostgreSQL, MySQL, and SurrealDB. Unlike traditional ORMs, this project does not aim to abstract queries into a unified interface. Each database is treated independently, with its own isolated libraries and methods tailored to its specific syntax and features.
-
----
-
-## Features (Planned)
-
-### ✅ Cross-Database Support *(WIP)*
-
-- Designed for adaptability with multiple databases.
-- Initial focus: **PostgreSQL**, **MySQL**, and **SurrealDB**.
+Unlike most ORMs, `rQuery Builder` respects the syntax and features unique to each supported database. It provides isolated modules and methods per database, ensuring full flexibility and alignment with native SQL dialects.
 
 ---
 
-### 🚧 PostgreSQL Support
+## ✨ Key Features (Planned)
 
-- [ ] Table Columns Query
-- [ ] `SELECT` *(Work in Progress)*
-- [ ] `SELECT` with `JOIN`s
-- [ ] `SELECT` using `JSONB` fields
-- [ ] `INSERT`
-- [ ] `INSERT BULK`
-- [ ] `DELETE`
-- [ ] `UPDATE`
-- [ ] `UPDATE BULK`
+### ✅ Multi-Database Support *(in progress)*
+
+- Modular design with adapters for each database.
+- Initial support for:
+  - **PostgreSQL**
+  - **MySQL**
+  - **SurrealDB**
 
 ---
 
-### ⏳ MySQL Support
+### 🐘 PostgreSQL Support
 
-Planned feature parity with PostgreSQL.
+#### Operators
+- [x] `=` Equal  
+- [x] `!=` Not Equal  
+- [x] `LIKE`  
+- [x] `>` Greater Than  
+- [x] `>=` Greater Than or Equal  
+- [x] `<` Less Than  
+- [x] `<=` Less Than or Equal  
+- [x] `IN`  
+- [x] `NOT IN`  
+- [x] `IS NULL`  
+- [x] `IS NOT NULL`  
+- [ ] `BETWEEN`  
+
+#### SELECT
+- [ ] `DISTINCT`  
+- [x] `ORDER BY`  
+- [ ] `GROUP BY`  
+- [x] `WHERE`  
+- [x] Select specific columns  
+- [x] `JOIN` (inner, left, etc.)  
+- [x] Table aliasing  
+- [x] Retrieve columns of a table  
+- [ ] JSONB filtering  
+
+#### INSERT
+- [ ] Single row insert  
+- [ ] Bulk insert  
+
+#### UPDATE
+- [ ] Single row update  
+- [ ] Bulk update  
+
+#### DELETE
+- [ ] `DELETE` queries  
 
 ---
 
-### 🧪 SurrealDB Support
+### 🐬 MySQL Support *(Planned)*
 
-Exploring support for SurrealDB's query syntax and data model.
-
----
-
-## Getting Started
-
-> Coming soon: Installation instructions and usage examples.
+Targeting full feature parity with PostgreSQL support.
 
 ---
 
-## Development Setup
+### 🧪 SurrealDB Support *(Experimental)*
 
-To improve compilation times, it's recommended to use [`sccache`](https://github.com/mozilla/sccache) as a compiler cache.
+Exploring support for SurrealDB's document-style query language and unique features.
 
-### 📦 Installing `sccache`
+---
 
-#### On Linux/macOS (via Cargo):
+## 🚀 Getting Started
 
+> Coming soon: Installation, setup instructions, and usage examples.
+
+---
+
+## 🛠 Development Setup
+
+To speed up builds, it's recommended to use [`sccache`](https://github.com/mozilla/sccache) for caching compiled dependencies.
+
+### Installing `sccache`
+
+#### Linux / macOS (via Cargo):
 ```bash
 cargo install sccache
 ```
 
-#### On macOS (via Homebrew):
-
+#### macOS (via Homebrew):
 ```bash
 brew install sccache
 ```
 
-#### On Windows (via Chocolatey):
-
+#### Windows (via Chocolatey):
 ```powershell
 choco install sccache
 ```
 
-Then, configure Cargo to use `sccache` by adding the following to `.cargo/config.toml`:
+### Configure Cargo to Use `sccache`
+
+Add the following to your `.cargo/config.toml`:
 
 ```toml
 [build]
 rustc-wrapper = "sccache"
 ```
 
-You can verify it's working with:
-
+Verify it's working:
 ```bash
 sccache --show-stats
 ```
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
-Contributions are welcome! Whether it's a feature request, bug report, or code contribution, feel free to open an issue or submit a pull request.
+All contributions are welcome—feature suggestions, bug reports, documentation updates, or pull requests. Feel free to [open an issue](https://github.com/your-repo/issues) or contribute directly.
 
 ---
 
-## License
+## 📄 License
 
-MIT License *(or specify your license here)*
+MIT License
