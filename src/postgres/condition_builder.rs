@@ -5,19 +5,30 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ConditionValue {
+    Field(String, String), //(String,String) - (table alias, table field)
+    Value(Value),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConditionBuilder {
     pub table_alias: Option<String>,
     pub field: String,
     pub operator: Operator,
-    pub value: Option<Value>,
+    pub value: Option<ConditionValue>,
     pub logic: Option<Logic>,
 }
 
 impl ConditionBuilder {
-    pub fn bind(value: &Value) -> Option<String> {
-        match value {
-            Value::Array(_) => Some("(?)".to_string()),
-            _ => Some("?".to_string()),
+    pub fn bind(condition_value: &ConditionValue) -> Option<String> {
+        match condition_value {
+            ConditionValue::Field(table_alias, table_field) => {
+                Some(format!("{table_alias}.{table_field}"))
+            }
+            ConditionValue::Value(value) => match value {
+                Value::Array(_) => Some("(?)".to_string()),
+                _ => Some("?".to_string()),
+            },
         }
     }
 
@@ -64,7 +75,7 @@ pub mod test_condition_builder {
             table_alias: Some("t".to_string()),
             field: "myfield1".to_string(),
             operator: Operator::Eq,
-            value: Some(Value::String("test".to_string())),
+            value: Some(ConditionValue::Value(Value::String("test".to_string()))),
             logic: None,
         });
         assert!(result.is_ok(), "{:?}", result.err());
@@ -74,10 +85,23 @@ pub mod test_condition_builder {
             table_alias: Some("t".to_string()),
             field: "myfield1".to_string(),
             operator: Operator::Eq,
-            value: Some(Value::String("test".to_string())),
+            value: Some(ConditionValue::Value(Value::String("test".to_string()))),
             logic: Some(Logic::And),
         });
         assert!(result.is_ok(), "{:?}", result.err());
         assert_eq!(result.unwrap(), "AND t.myfield1 = ?".to_string());
+
+        let result = ConditionBuilder::build(&ConditionBuilder {
+            table_alias: Some("t".to_string()),
+            field: "myfield1".to_string(),
+            operator: Operator::Eq,
+            value: Some(ConditionValue::Field(
+                "p".to_string(),
+                "myfield2".to_string(),
+            )),
+            logic: Some(Logic::And),
+        });
+        assert!(result.is_ok(), "{:?}", result.err());
+        assert_eq!(result.unwrap(), "AND t.myfield1 = p.myfield2".to_string());
     }
 }

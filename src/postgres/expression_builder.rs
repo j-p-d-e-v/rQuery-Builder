@@ -1,4 +1,4 @@
-use crate::postgres::{ConditionBuilder, Logic};
+use crate::postgres::{ConditionBuilder, ConditionValue, Logic};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -22,7 +22,7 @@ impl ExpressionBuilder {
             } else {
                 data.condition = format!("{} {}", data.condition, condition)
             }
-            if let Some(value) = item.value {
+            if let Some(ConditionValue::Value(value)) = item.value {
                 data.values.push(value);
             }
         }
@@ -33,7 +33,7 @@ impl ExpressionBuilder {
 
 #[cfg(test)]
 pub mod test_expression_builder {
-    use crate::postgres::Operator;
+    use crate::postgres::{ConditionValue, Operator};
 
     use super::*;
 
@@ -43,7 +43,7 @@ pub mod test_expression_builder {
             table_alias: Some("t".to_string()),
             field: "myfield1".to_string(),
             operator: Operator::Eq,
-            value: Some(Value::String("test".to_string())),
+            value: Some(ConditionValue::Value(Value::String("test".to_string()))),
             logic: None,
         };
 
@@ -51,7 +51,7 @@ pub mod test_expression_builder {
             table_alias: Some("t".to_string()),
             field: "myfield2".to_string(),
             operator: Operator::Eq,
-            value: Some(Value::String("test".to_string())),
+            value: Some(ConditionValue::Value(Value::String("test".to_string()))),
             logic: Some(Logic::And),
         };
 

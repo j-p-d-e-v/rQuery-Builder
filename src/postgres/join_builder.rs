@@ -1,5 +1,7 @@
-use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+use super::{ExpressionBuilder, Logic};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum JoinKind {
@@ -28,63 +30,73 @@ pub struct JoinItem {
     pub field: String,
 }
 
-#[derive(Clone, Debug)]
-pub struct JoinBuilder;
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct JoinBuilder {
+    pub statement: String,
+    pub values: Vec<Value>, //For Binding
+}
 
 impl JoinBuilder {
-    pub fn build(values: Vec<JoinItem>) -> anyhow::Result<String> {
-        if values.is_empty() {
-            return Err(anyhow!("order by item is empty"));
+    fn format(condition: String, logic: Option<Logic>, do_grouping: bool) -> String {
+        let logic = if let Some(value) = logic {
+            value.to_string()
+        } else {
+            "".to_string()
+        };
+        if do_grouping {
+            format!("{logic} ({condition})")
+        } else {
+            condition
         }
-        let mut order_by: Vec<String> = Vec::new();
-        for item in values.into_iter() {
-            if item.field.is_empty() {
-                return Err(anyhow!("order by field is empty"));
+    }
+
+    pub fn build(
+        kind: JoinKind,
+        table: &str,
+        table_alias: &str,
+        values: Vec<ExpressionBuilder>,
+    ) -> JoinBuilder {
+        let mut data: JoinBuilder = JoinBuilder::default();
+        let mut expressions: Vec<String> = Vec::new();
+        let do_grouping = values.len() > 1;
+        for mut item in values {
+            let expression = Self::format(item.condition, item.logic, do_grouping);
+            if !item.values.is_empty() {
+                data.values.append(&mut item.values);
             }
-            let value = format!("{} {}", item.field, item.sequence);
-            if !order_by.contains(&value) {
-                order_by.push(value);
-            }
+            expressions.push(expression);
         }
-        Ok(format!("ORDER BY {}", order_by.join(", ").trim()))
+        data.statement = format!(
+            "{} JOIN {} as {} ON {}",
+            &kind,
+            table,
+            table_alias,
+            expressions.join(" ").trim()
+        );
+        data
     }
 }
 
 #[cfg(test)]
-pub mod test_order_by_builder {
+pub mod test_join_builder {
+    use crate::postgres::{ConditionBuilder, Operator};
+
     use super::*;
 
     #[tokio::test]
-    async fn test_order_by_builder() {
-        let order_by = JoinItem {
-            field: "".to_string(),
-            sequence: Sequence::Asc,
+    async fn test_join() {
+        let condition1 = ConditionBuilder {
+            table_alias: Some("p".to_string()),
+            field: "id".to_string(),
+            operator: Operator::Eq,
+            value: Some(Value::String("test".to_string())),
+            logic: None,
         };
-        let result = JoinBuilder::build(vec![order_by]);
-        assert!(result.is_err(), "expected error");
 
-        let order_by_items = vec![JoinItem {
-            field: "myfield1".to_string(),
-            sequence: Sequence::Asc,
-        }];
-        let result = JoinBuilder::build(order_by_items);
+        let expression1 = ExpressionBuilder::build(vec![condition1], None);
+        assert!(expression1.is_ok(), "{:?}", expression1.err());
+        let expression1 = expression1.unwrap();
+        let result = JoinBuilder::build(JoinKind::Left, "products", "p", vec![expression1]);
         assert!(result.is_ok(), "{:?}", result.err());
-        let result = result.unwrap();
-        assert_eq!(result, "ORDER BY myfield1 ASC");
-
-        let order_by_items = vec![
-            JoinItem {
-                field: "myfield1".to_string(),
-                sequence: Sequence::Asc,
-            },
-            JoinItem {
-                field: "myfield2".to_string(),
-                sequence: Sequence::Desc,
-            },
-        ];
-        let result = JoinBuilder::build(order_by_items);
-        assert!(result.is_ok(), "{:?}", result.err());
-        let result = result.unwrap();
-        assert_eq!(result, "ORDER BY myfield1 ASC, myfield2 DESC");
     }
 }

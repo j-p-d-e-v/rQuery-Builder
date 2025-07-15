@@ -106,7 +106,7 @@ pub mod test_select_builder {
     use serde_json::Number;
 
     use super::*;
-    use crate::postgres::{ConditionBuilder, Logic, Operator, Sequence};
+    use crate::postgres::{ConditionBuilder, ConditionValue, Logic, Operator, Sequence};
 
     #[tokio::test]
     async fn test_select_builder() {
@@ -192,7 +192,7 @@ pub mod test_select_builder {
                 table_alias: Some("t".to_string()),
                 field: "myfield3".to_string(),
                 operator: Operator::Eq,
-                value: Some(Value::String("MYVALUE".to_string())),
+                value: Some(ConditionValue::Value(Value::String("MYVALUE".to_string()))),
                 logic: None,
             },
             ConditionBuilder {
@@ -227,16 +227,18 @@ pub mod test_select_builder {
                     table_alias: Some("o".to_string()),
                     field: "product_id".to_string(),
                     operator: Operator::Eq,
-                    value: Some(Value::Number(Number::from_u128(1).unwrap())),
+                    value: Some(ConditionValue::Value(Value::Number(
+                        Number::from_u128(1).unwrap(),
+                    ))),
                     logic: None,
                 },
                 ConditionBuilder {
                     table_alias: Some("o".to_string()),
                     field: "user_id".to_string(),
                     operator: Operator::In,
-                    value: Some(Value::Array(vec![Value::Number(
+                    value: Some(ConditionValue::Value(Value::Array(vec![Value::Number(
                         Number::from_u128(1).unwrap(),
-                    )])),
+                    )]))),
                     logic: Some(Logic::And),
                 },
             ],
