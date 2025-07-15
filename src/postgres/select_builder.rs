@@ -39,7 +39,7 @@ impl SelectBuilder {
         self
     }
 
-    pub fn set_fields(&mut self, values: Vec<&str>) -> anyhow::Result<&mut Self> {
+    pub fn set_columns(&mut self, values: Vec<&str>) -> anyhow::Result<&mut Self> {
         if values.is_empty() {
             return Err(anyhow!("select field value is empty"));
         }
@@ -116,14 +116,14 @@ pub mod test_select_builder {
         assert_eq!(result.unwrap(), "SELECT * FROM mytable as t");
 
         let mut builder = SelectBuilder::new("mytable", "t");
-        let result = builder.set_fields(vec![]);
+        let result = builder.set_columns(vec![]);
         assert!(result.is_err(), "expecting error for fields");
         let result = builder.build();
         assert!(result.is_ok(), "{:?}", result.err());
         assert_eq!(result.unwrap(), "SELECT * FROM mytable as t");
 
         let mut builder = SelectBuilder::new("mytable", "t");
-        let result = builder.set_fields(vec!["myfield1", "myfield2"]);
+        let result = builder.set_columns(vec!["myfield1", "myfield2"]);
         assert!(result.is_ok(), "{:?}", result.err());
         let result = builder.build();
         assert!(result.is_ok(), "{:?}", result.err());
@@ -133,7 +133,7 @@ pub mod test_select_builder {
         );
 
         let mut builder = SelectBuilder::new("mytable", "t");
-        let result = builder.set_fields(vec!["myfield1", "myfield2"]);
+        let result = builder.set_columns(vec!["myfield1", "myfield2"]);
         assert!(result.is_ok(), "{:?}", result.err());
         let result = builder.set_order_by(vec![OrderByItem {
             table_alias: Some("t".to_string()),
@@ -149,7 +149,7 @@ pub mod test_select_builder {
         );
 
         let mut builder = SelectBuilder::new("mytable", "t");
-        let result = builder.set_fields(vec!["myfield1", "myfield2"]);
+        let result = builder.set_columns(vec!["myfield1", "myfield2"]);
         assert!(result.is_ok(), "{:?}", result.err());
         let result = builder.set_order_by(vec![
             OrderByItem {
@@ -172,7 +172,7 @@ pub mod test_select_builder {
         );
 
         let mut builder = SelectBuilder::new("mytable", "t");
-        let result = builder.set_fields(vec!["myfield1", "myfield2"]);
+        let result = builder.set_columns(vec!["myfield1", "myfield2"]);
         assert!(result.is_ok(), "{:?}", result.err());
         let result = builder.set_order_by(vec![
             OrderByItem {
@@ -245,7 +245,7 @@ pub mod test_select_builder {
         .unwrap();
         let result = builder
             .set_where(vec![where_clause])
-            .set_fields(vec!["id", "user_id", "product_id"])
+            .set_columns(vec!["id", "user_id", "product_id"])
             .unwrap()
             .set_limit(10)
             .set_offset(0)
