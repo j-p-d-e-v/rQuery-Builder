@@ -24,12 +24,6 @@ impl std::fmt::Display for JoinKind {
         write!(f, "{value}")
     }
 }
-
-#[derive(Clone, Debug)]
-pub struct JoinItem {
-    pub field: String,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct JoinBuilder {
     pub statement: String,
@@ -79,7 +73,9 @@ impl JoinBuilder {
 
 #[cfg(test)]
 pub mod test_join_builder {
-    use crate::postgres::{ConditionBuilder, Operator};
+    use serde_json::Number;
+
+    use crate::postgres::{ConditionBuilder, ConditionValue, Operator};
 
     use super::*;
 
@@ -89,7 +85,10 @@ pub mod test_join_builder {
             table_alias: Some("p".to_string()),
             field: "id".to_string(),
             operator: Operator::Eq,
-            value: Some(Value::String("test".to_string())),
+            value: Some(ConditionValue::Field(
+                "o".to_string(),
+                "product_id".to_string(),
+            )),
             logic: None,
         };
 
@@ -97,6 +96,81 @@ pub mod test_join_builder {
         assert!(expression1.is_ok(), "{:?}", expression1.err());
         let expression1 = expression1.unwrap();
         let result = JoinBuilder::build(JoinKind::Left, "products", "p", vec![expression1]);
-        assert!(result.is_ok(), "{:?}", result.err());
+        assert_eq!(
+            result.statement,
+            "LEFT JOIN products as p ON p.id = o.product_id"
+        );
+        assert_eq!(result.values.len(), 0);
+
+        let condition1 = ConditionBuilder {
+            table_alias: Some("p".to_string()),
+            field: "id".to_string(),
+            operator: Operator::Eq,
+            value: Some(ConditionValue::Field(
+                "o".to_string(),
+                "product_id".to_string(),
+            )),
+            logic: None,
+        };
+
+        let condition2 = ConditionBuilder {
+            table_alias: Some("p".to_string()),
+            field: "user_id".to_string(),
+            operator: Operator::Eq,
+            value: Some(ConditionValue::Value(Value::Number(
+                Number::from_u128(123).unwrap(),
+            ))),
+            logic: Some(Logic::And),
+        };
+
+        let expression1 = ExpressionBuilder::build(vec![condition1, condition2], None);
+        assert!(expression1.is_ok(), "{:?}", expression1.err());
+        let expression1 = expression1.unwrap();
+        let result = JoinBuilder::build(JoinKind::Left, "products", "p", vec![expression1]);
+        assert_eq!(
+            result.statement,
+            "LEFT JOIN products as p ON p.id = o.product_id AND p.user_id = ?"
+        );
+        assert_eq!(result.values.len(), 1);
+
+        let condition1 = ConditionBuilder {
+            table_alias: Some("p".to_string()),
+            field: "id".to_string(),
+            operator: Operator::Eq,
+            value: Some(ConditionValue::Field(
+                "o".to_string(),
+                "product_id".to_string(),
+            )),
+            logic: None,
+        };
+
+        let condition2 = ConditionBuilder {
+            table_alias: Some("p".to_string()),
+            field: "user_id".to_string(),
+            operator: Operator::Eq,
+            value: Some(ConditionValue::Value(Value::Number(
+                Number::from_u128(123).unwrap(),
+            ))),
+            logic: Some(Logic::And),
+        };
+
+        let expression1 =
+            ExpressionBuilder::build(vec![condition1.clone(), condition2.clone()], None);
+        assert!(expression1.is_ok(), "{:?}", expression1.err());
+        let expression2 = ExpressionBuilder::build(vec![condition1, condition2], Some(Logic::And));
+        assert!(expression1.is_ok(), "{:?}", expression1.err());
+        let expression1 = expression1.unwrap();
+        let expression2 = expression2.unwrap();
+        let result = JoinBuilder::build(
+            JoinKind::Left,
+            "products",
+            "p",
+            vec![expression1, expression2],
+        );
+        assert_eq!(
+            result.statement,
+            "LEFT JOIN products as p ON (p.id = o.product_id AND p.user_id = ?) AND (p.id = o.product_id AND p.user_id = ?)"
+        );
+        assert_eq!(result.values.len(), 2);
     }
 }
