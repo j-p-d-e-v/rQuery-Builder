@@ -35,7 +35,6 @@ impl ExpressionBuilder {
                     ConditionValue::Field(_, _) => {}
                 }
             }
-                
         }
         data.logic = logic;
         Ok(data)
@@ -82,7 +81,10 @@ pub mod test_expression_builder {
             table_alias: Some("t".to_string()),
             field: "myfield2".to_string(),
             operator: Operator::Between,
-            value: Some(ConditionValue::Range(Value::Number(Number::from_u128(10).unwrap()),Value::Number(Number::from_u128(20).unwrap()))),
+            value: Some(ConditionValue::Range(
+                Value::Number(Number::from_u128(10).unwrap()),
+                Value::Number(Number::from_u128(20).unwrap()),
+            )),
             logic: Some(Logic::And),
         };
         let result = ExpressionBuilder::build(vec![condition1.clone()], None);
@@ -93,6 +95,6 @@ pub mod test_expression_builder {
             "AND t.myfield2 BETWEEN ? AND ?".to_string()
         );
         assert_eq!(result.logic, None);
-        assert_eq!(result.values.len(),2);
+        assert_eq!(result.values.len(), 2);
     }
 }

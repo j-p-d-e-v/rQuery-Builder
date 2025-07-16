@@ -32,12 +32,12 @@ Unlike most ORMs, `rQuery Builder` respects the syntax and features unique to ea
 - [x] `NOT IN`  
 - [x] `IS NULL`  
 - [x] `IS NOT NULL`  
-- [ ] `BETWEEN`  
+- [x] `BETWEEN`  
 
 #### SELECT
-- [ ] `DISTINCT`  
+- [x] `DISTINCT`  
 - [x] `ORDER BY`  
-- [ ] `GROUP BY`  
+- [x] `GROUP BY`  
 - [x] `WHERE`  
 - [x] Select specific columns  
 - [x] `JOIN` (inner, left, etc.)  

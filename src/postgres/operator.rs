@@ -25,7 +25,7 @@ pub enum Operator {
     NotNull, // Value is NOT NULL,
 
     // Range
-    Between
+    Between,
 }
 
 impl std::fmt::Display for Operator {

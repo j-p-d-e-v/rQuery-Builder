@@ -1,11 +1,13 @@
 use crate::postgres::{
-    ExpressionBuilder, JoinBuilder, JoinKind, OrderByBuilder, OrderByItem, WhereBuilder,
+    ExpressionBuilder, GroupByBuilder, GroupByItem, JoinBuilder, JoinKind, OrderByBuilder,
+    OrderByItem, WhereBuilder,
 };
 use anyhow::anyhow;
 use serde_json::Value;
 
 #[derive(Clone, Debug)]
 pub struct SelectBuilder {
+    pub distinct: bool,
     pub table: String,
     pub table_alias: String,
     pub fields: Vec<String>,
@@ -14,12 +16,14 @@ pub struct SelectBuilder {
     pub values: Vec<Value>,
     pub filter_statement: Option<String>,
     pub join_statement: Option<String>,
+    pub group_by_statement: Option<String>,
     pub order_by_statement: Option<String>,
 }
 
 impl SelectBuilder {
-    pub fn new(table: &str, table_alias: &str) -> Self {
+    pub fn new(table: &str, table_alias: &str, distinct: bool) -> Self {
         Self {
+            distinct,
             table: table.to_string(),
             table_alias: table_alias.to_string(),
             fields: Vec::new(),
@@ -28,6 +32,7 @@ impl SelectBuilder {
             values: Vec::new(),
             join_statement: None,
             filter_statement: None,
+            group_by_statement: None,
             order_by_statement: None,
         }
     }
@@ -84,6 +89,13 @@ impl SelectBuilder {
         Ok(self)
     }
 
+    pub fn group_by(&mut self, values: Vec<GroupByItem>) -> anyhow::Result<&mut Self> {
+        if !values.is_empty() {
+            self.group_by_statement = Some(GroupByBuilder::build(values)?);
+        }
+        Ok(self)
+    }
+
     pub fn limit(&mut self, value: usize) -> &mut Self {
         self.limit = Some(value);
         self
@@ -104,19 +116,26 @@ impl SelectBuilder {
         } else {
             self.fields.join(", ")
         };
-        let mut statement: String = format!(
-            "SELECT {} FROM {} as {}",
-            fields, self.table, self.table_alias
-        );
-
+        let mut statement: String = if self.distinct {
+            format!(
+                "SELECT DISTINCT {} FROM {} as {}",
+                fields, self.table, self.table_alias
+            )
+        } else {
+            format!(
+                "SELECT {} FROM {} as {}",
+                fields, self.table, self.table_alias
+            )
+        };
         if let Some(value) = &self.join_statement {
             statement = format!("{statement} {value}");
         }
-
         if let Some(value) = &self.filter_statement {
             statement = format!("{statement} {value}");
         }
-
+        if let Some(value) = &self.group_by_statement {
+            statement = format!("{statement} {value}");
+        }
         if let Some(value) = &self.order_by_statement {
             statement = format!("{statement} {value}");
         }
@@ -140,19 +159,19 @@ pub mod test_select_builder {
 
     #[tokio::test]
     async fn test_select_builder() {
-        let builder = SelectBuilder::new("mytable", "t");
+        let builder = SelectBuilder::new("mytable", "t", false);
         let result = builder.build();
         assert!(result.is_ok(), "{:?}", result.err());
         assert_eq!(result.unwrap(), "SELECT * FROM mytable as t");
 
-        let mut builder = SelectBuilder::new("mytable", "t");
+        let mut builder = SelectBuilder::new("mytable", "t", false);
         let result = builder.columns(vec![]);
         assert!(result.is_err(), "expecting error for fields");
         let result = builder.build();
         assert!(result.is_ok(), "{:?}", result.err());
         assert_eq!(result.unwrap(), "SELECT * FROM mytable as t");
 
-        let mut builder = SelectBuilder::new("mytable", "t");
+        let mut builder = SelectBuilder::new("mytable", "t", false);
         let result = builder.columns(vec!["myfield1", "myfield2"]);
         assert!(result.is_ok(), "{:?}", result.err());
         let result = builder.build();
@@ -162,7 +181,7 @@ pub mod test_select_builder {
             "SELECT t.myfield1, t.myfield2 FROM mytable as t"
         );
 
-        let mut builder = SelectBuilder::new("mytable", "t");
+        let mut builder = SelectBuilder::new("mytable", "t", false);
         let result = builder.columns(vec!["myfield1", "myfield2"]);
         assert!(result.is_ok(), "{:?}", result.err());
         let result = builder.order_by(vec![OrderByItem {
@@ -178,7 +197,7 @@ pub mod test_select_builder {
             "SELECT t.myfield1, t.myfield2 FROM mytable as t ORDER BY t.myfield1 ASC"
         );
 
-        let mut builder = SelectBuilder::new("mytable", "t");
+        let mut builder = SelectBuilder::new("mytable", "t", false);
         let result = builder.columns(vec!["myfield1", "myfield2"]);
         assert!(result.is_ok(), "{:?}", result.err());
         let result = builder.order_by(vec![
@@ -201,7 +220,7 @@ pub mod test_select_builder {
             "SELECT t.myfield1, t.myfield2 FROM mytable as t ORDER BY myfield1 ASC, myfield2 DESC"
         );
 
-        let mut builder = SelectBuilder::new("mytable", "t");
+        let mut builder = SelectBuilder::new("mytable", "t", false);
         let result = builder.columns(vec!["myfield1", "myfield2"]);
         assert!(result.is_ok(), "{:?}", result.err());
         let result = builder.order_by(vec![
@@ -249,7 +268,7 @@ pub mod test_select_builder {
         );
         assert!(builder.get_values().len() == 2);
 
-        let mut builder = SelectBuilder::new("orders", "o");
+        let mut builder = SelectBuilder::new("orders", "o", false);
 
         let join_clause = ExpressionBuilder::build(
             vec![ConditionBuilder {
@@ -273,9 +292,12 @@ pub mod test_select_builder {
             .offset(0)
             .build();
         assert!(result.is_ok(), "{:?}", result.err());
-        assert_eq!(result.unwrap(),"SELECT o.id, o.user_id, o.product_id FROM orders as o INNER JOIN products as p ON p.id = o.product_id LIMIT 10 OFFSET 0");
+        assert_eq!(
+            result.unwrap(),
+            "SELECT o.id, o.user_id, o.product_id FROM orders as o INNER JOIN products as p ON p.id = o.product_id LIMIT 10 OFFSET 0"
+        );
 
-        let mut builder = SelectBuilder::new("orders", "o");
+        let mut builder = SelectBuilder::new("orders", "o", false);
 
         let join_clause = ExpressionBuilder::build(
             vec![ConditionBuilder {
@@ -306,14 +328,43 @@ pub mod test_select_builder {
         )
         .unwrap();
         let result = builder
-            .join(JoinKind::Left, "products", "p", vec![join_clause])
-            .filter(vec![filter_clause])
+            .join(JoinKind::Left, "products", "p", vec![join_clause.clone()])
+            .filter(vec![filter_clause.clone()])
             .columns(vec!["id", "user_id", "product_id"])
             .unwrap()
             .limit(10)
             .offset(0)
             .build();
         assert!(result.is_ok(), "{:?}", result.err());
-        assert_eq!(result.unwrap(),"SELECT o.id, o.user_id, o.product_id FROM orders as o LEFT JOIN products as p ON p.id = o.product_id WHERE o.id = ? LIMIT 10 OFFSET 0");
+        assert_eq!(
+            result.unwrap(),
+            "SELECT o.id, o.user_id, o.product_id FROM orders as o LEFT JOIN products as p ON p.id = o.product_id WHERE o.id = ? LIMIT 10 OFFSET 0"
+        );
+
+        let mut builder = SelectBuilder::new("orders", "o", false);
+        let result = builder
+            .join(JoinKind::Left, "products", "p", vec![join_clause])
+            .filter(vec![filter_clause])
+            .columns(vec!["id", "user_id", "product_id"])
+            .unwrap()
+            .order_by(vec![OrderByItem {
+                table_alias: Some("o".to_string()),
+                field: "user_id".to_string(),
+                sequence: Sequence::Asc,
+            }])
+            .unwrap()
+            .group_by(vec![GroupByItem {
+                table_alias: Some("o".to_string()),
+                field: "user_id".to_string(),
+            }])
+            .unwrap()
+            .limit(10)
+            .offset(0)
+            .build();
+        assert!(result.is_ok(), "{:?}", result.err());
+        assert_eq!(
+            result.unwrap(),
+            "SELECT o.id, o.user_id, o.product_id FROM orders as o LEFT JOIN products as p ON p.id = o.product_id WHERE o.id = ? GROUP BY o.user_id ORDER BY o.user_id ASC LIMIT 10 OFFSET 0"
+        );
     }
 }

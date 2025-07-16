@@ -1,5 +1,6 @@
 pub mod condition_builder;
 pub mod expression_builder;
+pub mod group_by_builder;
 pub mod join_builder;
 pub mod logic;
 pub mod operator;
@@ -7,8 +8,10 @@ pub mod order_by_builder;
 pub mod select_builder;
 pub mod table_columns_builder;
 pub mod where_builder;
+
 pub use condition_builder::{ConditionBuilder, ConditionValue};
 pub use expression_builder::ExpressionBuilder;
+pub use group_by_builder::{GroupByBuilder, GroupByItem};
 pub use join_builder::{JoinBuilder, JoinKind};
 pub use logic::Logic;
 pub use operator::Operator;

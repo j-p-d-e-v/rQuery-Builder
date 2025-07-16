@@ -8,7 +8,7 @@ use serde_json::Value;
 pub enum ConditionValue {
     Field(String, String), //(String,String) - (table alias, table field)
     Single(Value),
-    Range(Value,Value),
+    Range(Value, Value),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -21,8 +21,8 @@ pub struct ConditionBuilder {
 }
 
 impl ConditionBuilder {
-    pub fn bind_value(value: &Value) -> String{
-         match value {
+    pub fn bind_value(value: &Value) -> String {
+        match value {
             Value::Array(_) => "(?)".to_string(),
             _ => "?".to_string(),
         }
@@ -34,7 +34,11 @@ impl ConditionBuilder {
                 format!("{table_alias}.{table_field}")
             }
             ConditionValue::Single(value) => Self::bind_value(value),
-            ConditionValue::Range(value1, value2) => format!("{} AND {}",Self::bind_value(value1),Self::bind_value(value2)),
+            ConditionValue::Range(value1, value2) => format!(
+                "{} AND {}",
+                Self::bind_value(value1),
+                Self::bind_value(value2)
+            ),
         };
         Some(value)
     }
@@ -118,11 +122,14 @@ pub mod test_condition_builder {
             operator: Operator::Between,
             value: Some(ConditionValue::Range(
                 Value::Number(Number::from_u128(10).unwrap()),
-                Value::Number(Number::from_u128(20).unwrap())
+                Value::Number(Number::from_u128(20).unwrap()),
             )),
             logic: Some(Logic::And),
         });
         assert!(result.is_ok(), "{:?}", result.err());
-        assert_eq!(result.unwrap(), "AND t.myfield1 BETWEEN ? AND ?".to_string());
+        assert_eq!(
+            result.unwrap(),
+            "AND t.myfield1 BETWEEN ? AND ?".to_string()
+        );
     }
 }
