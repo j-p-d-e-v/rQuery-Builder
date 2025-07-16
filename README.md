@@ -34,6 +34,7 @@ Unlike most ORMs, `rQuery Builder` respects the syntax and features unique to ea
 - [x] `IS NOT NULL`  
 - [x] `BETWEEN`  
 
+
 #### SELECT
 - [x] `DISTINCT`  
 - [x] `ORDER BY`  
@@ -44,17 +45,21 @@ Unlike most ORMs, `rQuery Builder` respects the syntax and features unique to ea
 - [x] Table aliasing  
 - [x] Retrieve columns of a table  
 - [ ] JSONB filtering  
+- [x] Placeholder Kinds/Types: (`?`,`$N`)
 
 #### INSERT
-- [ ] Single row insert  
-- [ ] Bulk insert  
+- [x] Single row insert  
+- [x] Bulk insert  
+- [x] Placeholder Kinds/Types: (`?`,`$N`)
 
 #### UPDATE
 - [ ] Single row update  
 - [ ] Bulk update  
+- [ ] Placeholder Kinds/Types: (`?`,`$N`)
 
 #### DELETE
 - [ ] `DELETE` queries  
+- [ ] Placeholder Kinds/Types: (`?`,`$N`)
 
 ---
 

@@ -1,3 +1,4 @@
+use crate::placeholder::PlaceholderKind;
 use crate::postgres::{
     ExpressionBuilder, GroupByBuilder, GroupByItem, JoinBuilder, JoinKind, OrderByBuilder,
     OrderByItem, WhereBuilder,
@@ -16,11 +17,15 @@ pub struct SelectBuilder {
     pub join_statement: Option<String>,
     pub group_by_statement: Option<String>,
     pub order_by_statement: Option<String>,
+    pub placeholder_kind: PlaceholderKind,
 }
 
 impl SelectBuilder {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(placeholder: PlaceholderKind) -> Self {
+        Self {
+            placeholder_kind: placeholder,
+            ..Default::default()
+        }
     }
 
     pub fn distinct(&mut self) -> &mut Self {
@@ -95,7 +100,7 @@ impl SelectBuilder {
 
     /// Allows users to define columns with custom expressions or functions, such as CONCAT,
     /// by specifying the raw column names or expressions as strings.
-    /// 
+    ///
     /// # Parameters
     /// - `values`: A vector of string slices representing the columns or expressions to be used.
     ///   If the vector is empty, a wildcard ("*") is used to select all columns.
@@ -111,15 +116,11 @@ impl SelectBuilder {
         let mut fields = if values.is_empty() {
             vec!["*".to_string()]
         } else {
-            values
-                .iter()
-                .map(|value| value.to_string() )
-                .collect()
+            values.iter().map(|value| value.to_string()).collect()
         };
         self.fields.append(&mut fields);
         self
     }
-
 
     pub fn order_by(&mut self, values: Vec<OrderByItem>) -> anyhow::Result<&mut Self> {
         if !values.is_empty() {
@@ -174,8 +175,23 @@ impl SelectBuilder {
         if let Some(value) = &self.offset {
             statement = format!("{statement} OFFSET {value}");
         }
-
-        Ok(statement.trim().to_string())
+        match self.placeholder_kind {
+            PlaceholderKind::QuestionMark => Ok(statement.trim().to_string()),
+            PlaceholderKind::DollarSequential => {
+                let mut counter: usize = 0;
+                let values: Vec<String> = statement
+                    .chars()
+                    .map(|c| {
+                        if c.to_string() == "?" {
+                            counter += 1;
+                            return format!("${counter}");
+                        }
+                        c.to_string()
+                    })
+                    .collect();
+                Ok(values.join("").trim().to_string())
+            }
+        }
     }
 }
 #[cfg(test)]
@@ -188,19 +204,19 @@ pub mod test_select_builder {
 
     #[tokio::test]
     async fn test_select_builder() {
-        let mut builder = SelectBuilder::new();
+        let mut builder = SelectBuilder::new(PlaceholderKind::QuestionMark);
         let result = builder.table("mytable", "t").columns("t", vec![]).build();
         assert!(result.is_ok(), "{:?}", result.err());
-        assert_eq!(result.unwrap(), "SELECT * FROM mytable as t");
+        assert_eq!(result.unwrap(), "SELECT t.* FROM mytable as t");
 
-        let mut builder = SelectBuilder::new();
-        let result = builder.table("mytable", "t").columns("t", vec![]);
+        let mut builder = SelectBuilder::new(PlaceholderKind::QuestionMark);
+        let _ = builder.table("mytable", "t").columns("t", vec![]);
         let result = builder.build();
         assert!(result.is_ok(), "{:?}", result.err());
-        assert_eq!(result.unwrap(), "SELECT * FROM mytable as t");
+        assert_eq!(result.unwrap(), "SELECT t.* FROM mytable as t");
 
-        let mut builder = SelectBuilder::new();
-        let result = builder
+        let mut builder = SelectBuilder::new(PlaceholderKind::QuestionMark);
+        let _ = builder
             .table("mytable", "t")
             .columns("t", vec!["myfield1", "myfield2"]);
         let result = builder.build();
@@ -210,8 +226,8 @@ pub mod test_select_builder {
             "SELECT t.myfield1, t.myfield2 FROM mytable as t"
         );
 
-        let mut builder = SelectBuilder::new();
-        let result = builder
+        let mut builder = SelectBuilder::new(PlaceholderKind::QuestionMark);
+        let _ = builder
             .table("mytable", "t")
             .columns("t", vec!["myfield1", "myfield2"]);
         let result = builder.order_by(vec![OrderByItem {
@@ -227,8 +243,8 @@ pub mod test_select_builder {
             "SELECT t.myfield1, t.myfield2 FROM mytable as t ORDER BY t.myfield1 ASC"
         );
 
-        let mut builder = SelectBuilder::new();
-        let result = builder
+        let mut builder = SelectBuilder::new(PlaceholderKind::QuestionMark);
+        let _ = builder
             .table("mytable", "t")
             .columns("t", vec!["myfield1", "myfield2"]);
         let result = builder.order_by(vec![
@@ -251,7 +267,7 @@ pub mod test_select_builder {
             "SELECT t.myfield1, t.myfield2 FROM mytable as t ORDER BY myfield1 ASC, myfield2 DESC"
         );
 
-        let mut builder = SelectBuilder::new();
+        let mut builder = SelectBuilder::new(PlaceholderKind::QuestionMark);
         let result = builder
             .table("mytable", "t")
             .columns("t", vec!["myfield1", "myfield2"])
@@ -300,7 +316,7 @@ pub mod test_select_builder {
         );
         assert!(builder.get_values().len() == 2);
 
-        let mut builder = SelectBuilder::new();
+        let mut builder = SelectBuilder::new(PlaceholderKind::QuestionMark);
 
         let join_clause = ExpressionBuilder::build(
             vec![ConditionBuilder {
@@ -329,7 +345,7 @@ pub mod test_select_builder {
             "SELECT o.id, o.user_id, o.product_id FROM orders as o INNER JOIN products as p ON p.id = o.product_id LIMIT 10 OFFSET 0"
         );
 
-        let mut builder = SelectBuilder::new();
+        let mut builder = SelectBuilder::new(PlaceholderKind::QuestionMark);
 
         let join_clause = ExpressionBuilder::build(
             vec![ConditionBuilder {
@@ -373,7 +389,66 @@ pub mod test_select_builder {
             "SELECT o.id, o.user_id, o.product_id FROM orders as o LEFT JOIN products as p ON p.id = o.product_id WHERE o.id = ? LIMIT 10 OFFSET 0"
         );
 
-        let mut builder = SelectBuilder::new();
+        let mut builder = SelectBuilder::new(PlaceholderKind::DollarSequential);
+        let result = builder
+            .table("orders", "o")
+            .join(JoinKind::Left, "products", "p", vec![join_clause.clone()])
+            .filter(vec![filter_clause.clone()])
+            .columns("o", vec!["id", "user_id", "product_id"])
+            .order_by(vec![OrderByItem {
+                table_alias: Some("o".to_string()),
+                field: "user_id".to_string(),
+                sequence: Sequence::Asc,
+            }])
+            .unwrap()
+            .group_by(vec![GroupByItem {
+                table_alias: Some("o".to_string()),
+                field: "user_id".to_string(),
+            }])
+            .unwrap()
+            .limit(10)
+            .offset(0)
+            .build();
+        assert!(result.is_ok(), "{:?}", result.err());
+        assert_eq!(
+            result.unwrap(),
+            "SELECT o.id, o.user_id, o.product_id FROM orders as o LEFT JOIN products as p ON p.id = o.product_id WHERE o.id = $1 GROUP BY o.user_id ORDER BY o.user_id ASC LIMIT 10 OFFSET 0"
+        );
+
+        let filter_clause = ExpressionBuilder::build(
+            vec![
+                ConditionBuilder {
+                    table_alias: Some("o".to_string()),
+                    field: "id".to_string(),
+                    operator: Operator::Eq,
+                    value: Some(ConditionValue::Single(Value::Number(
+                        Number::from_u128(1).unwrap(),
+                    ))),
+                    logic: None,
+                },
+                ConditionBuilder {
+                    table_alias: Some("o".to_string()),
+                    field: "user_id".to_string(),
+                    operator: Operator::Eq,
+                    value: Some(ConditionValue::Single(Value::Number(
+                        Number::from_u128(2).unwrap(),
+                    ))),
+                    logic: Some(Logic::And),
+                },
+                ConditionBuilder {
+                    table_alias: Some("o".to_string()),
+                    field: "product_id".to_string(),
+                    operator: Operator::Eq,
+                    value: Some(ConditionValue::Single(Value::Number(
+                        Number::from_u128(3).unwrap(),
+                    ))),
+                    logic: Some(Logic::And),
+                },
+            ],
+            None,
+        )
+        .unwrap();
+        let mut builder = SelectBuilder::new(PlaceholderKind::DollarSequential);
         let result = builder
             .table("orders", "o")
             .join(JoinKind::Left, "products", "p", vec![join_clause])
@@ -396,7 +471,7 @@ pub mod test_select_builder {
         assert!(result.is_ok(), "{:?}", result.err());
         assert_eq!(
             result.unwrap(),
-            "SELECT o.id, o.user_id, o.product_id FROM orders as o LEFT JOIN products as p ON p.id = o.product_id WHERE o.id = ? GROUP BY o.user_id ORDER BY o.user_id ASC LIMIT 10 OFFSET 0"
+            "SELECT o.id, o.user_id, o.product_id FROM orders as o LEFT JOIN products as p ON p.id = o.product_id WHERE o.id = $1 AND o.user_id = $2 AND o.product_id = $3 GROUP BY o.user_id ORDER BY o.user_id ASC LIMIT 10 OFFSET 0"
         );
     }
 }

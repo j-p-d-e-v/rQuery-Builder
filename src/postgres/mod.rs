@@ -1,6 +1,7 @@
 pub mod condition_builder;
 pub mod expression_builder;
 pub mod group_by_builder;
+pub mod insert_builder;
 pub mod join_builder;
 pub mod logic;
 pub mod operator;
