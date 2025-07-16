@@ -7,7 +7,8 @@ use serde_json::Value;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ConditionValue {
     Field(String, String), //(String,String) - (table alias, table field)
-    Value(Value),
+    Single(Value),
+    Range(Value,Value),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,16 +21,22 @@ pub struct ConditionBuilder {
 }
 
 impl ConditionBuilder {
-    pub fn bind(condition_value: &ConditionValue) -> Option<String> {
-        match condition_value {
-            ConditionValue::Field(table_alias, table_field) => {
-                Some(format!("{table_alias}.{table_field}"))
-            }
-            ConditionValue::Value(value) => match value {
-                Value::Array(_) => Some("(?)".to_string()),
-                _ => Some("?".to_string()),
-            },
+    pub fn bind_value(value: &Value) -> String{
+         match value {
+            Value::Array(_) => "(?)".to_string(),
+            _ => "?".to_string(),
         }
+    }
+
+    pub fn bind(condition_value: &ConditionValue) -> Option<String> {
+        let value = match condition_value {
+            ConditionValue::Field(table_alias, table_field) => {
+                format!("{table_alias}.{table_field}")
+            }
+            ConditionValue::Single(value) => Self::bind_value(value),
+            ConditionValue::Range(value1, value2) => format!("{} AND {}",Self::bind_value(value1),Self::bind_value(value2)),
+        };
+        Some(value)
     }
 
     pub fn build(item: &ConditionBuilder) -> anyhow::Result<String> {
@@ -67,6 +74,8 @@ impl ConditionBuilder {
 
 #[cfg(test)]
 pub mod test_condition_builder {
+    use serde_json::Number;
+
     use super::*;
 
     #[tokio::test]
@@ -75,7 +84,7 @@ pub mod test_condition_builder {
             table_alias: Some("t".to_string()),
             field: "myfield1".to_string(),
             operator: Operator::Eq,
-            value: Some(ConditionValue::Value(Value::String("test".to_string()))),
+            value: Some(ConditionValue::Single(Value::String("test".to_string()))),
             logic: None,
         });
         assert!(result.is_ok(), "{:?}", result.err());
@@ -85,7 +94,7 @@ pub mod test_condition_builder {
             table_alias: Some("t".to_string()),
             field: "myfield1".to_string(),
             operator: Operator::Eq,
-            value: Some(ConditionValue::Value(Value::String("test".to_string()))),
+            value: Some(ConditionValue::Single(Value::String("test".to_string()))),
             logic: Some(Logic::And),
         });
         assert!(result.is_ok(), "{:?}", result.err());
@@ -103,5 +112,17 @@ pub mod test_condition_builder {
         });
         assert!(result.is_ok(), "{:?}", result.err());
         assert_eq!(result.unwrap(), "AND t.myfield1 = p.myfield2".to_string());
+        let result = ConditionBuilder::build(&ConditionBuilder {
+            table_alias: Some("t".to_string()),
+            field: "myfield1".to_string(),
+            operator: Operator::Between,
+            value: Some(ConditionValue::Range(
+                Value::Number(Number::from_u128(10).unwrap()),
+                Value::Number(Number::from_u128(20).unwrap())
+            )),
+            logic: Some(Logic::And),
+        });
+        assert!(result.is_ok(), "{:?}", result.err());
+        assert_eq!(result.unwrap(), "AND t.myfield1 BETWEEN ? AND ?".to_string());
     }
 }

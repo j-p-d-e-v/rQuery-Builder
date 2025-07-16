@@ -117,7 +117,7 @@ pub mod test_join_builder {
             table_alias: Some("p".to_string()),
             field: "user_id".to_string(),
             operator: Operator::Eq,
-            value: Some(ConditionValue::Value(Value::Number(
+            value: Some(ConditionValue::Single(Value::Number(
                 Number::from_u128(123).unwrap(),
             ))),
             logic: Some(Logic::And),
@@ -148,7 +148,7 @@ pub mod test_join_builder {
             table_alias: Some("p".to_string()),
             field: "user_id".to_string(),
             operator: Operator::Eq,
-            value: Some(ConditionValue::Value(Value::Number(
+            value: Some(ConditionValue::Single(Value::Number(
                 Number::from_u128(123).unwrap(),
             ))),
             logic: Some(Logic::And),

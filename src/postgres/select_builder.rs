@@ -222,7 +222,7 @@ pub mod test_select_builder {
                 table_alias: Some("t".to_string()),
                 field: "myfield3".to_string(),
                 operator: Operator::Eq,
-                value: Some(ConditionValue::Value(Value::String("MYVALUE".to_string()))),
+                value: Some(ConditionValue::Single(Value::String("MYVALUE".to_string()))),
                 logic: None,
             },
             ConditionBuilder {
@@ -297,7 +297,7 @@ pub mod test_select_builder {
                 table_alias: Some("o".to_string()),
                 field: "id".to_string(),
                 operator: Operator::Eq,
-                value: Some(ConditionValue::Value(Value::Number(
+                value: Some(ConditionValue::Single(Value::Number(
                     Number::from_u128(1).unwrap(),
                 ))),
                 logic: None,

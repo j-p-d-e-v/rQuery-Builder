@@ -46,15 +46,15 @@ pub mod test_where_builder {
 
     #[tokio::test]
     async fn test_where_builder() {
-        let data = ConditionValue::Value(Value::String("MYVALUE".to_string()));
+        let data = ConditionValue::Single(Value::String("MYVALUE".to_string()));
         let result = ConditionBuilder::bind(&data);
         assert_eq!(result, Some("?".to_string()));
 
-        let data = ConditionValue::Value(Value::Number(Number::from_i128(128).unwrap()));
+        let data = ConditionValue::Single(Value::Number(Number::from_i128(128).unwrap()));
         let result = ConditionBuilder::bind(&data);
         assert_eq!(result, Some("?".to_string()));
 
-        let values = ConditionValue::Value(Value::Array(vec![
+        let values = ConditionValue::Single(Value::Array(vec![
             Value::String("MYVALUE".to_string()),
             Value::Number(Number::from_i128(128).unwrap()),
         ]));
@@ -65,7 +65,7 @@ pub mod test_where_builder {
             table_alias: None,
             field: "myfield1".to_string(),
             operator: Operator::Eq,
-            value: Some(ConditionValue::Value(Value::String(String::from(
+            value: Some(ConditionValue::Single(Value::String(String::from(
                 "MYVALUE",
             )))),
             logic: None,
@@ -93,7 +93,7 @@ pub mod test_where_builder {
             table_alias: Some("t".to_string()),
             field: "".to_string(),
             operator: Operator::Eq,
-            value: Some(ConditionValue::Value(Value::String("MYVALUE".to_string()))),
+            value: Some(ConditionValue::Single(Value::String("MYVALUE".to_string()))),
             logic: None,
         }];
         let expression_error = ExpressionBuilder::build(where_expressions, None);
@@ -104,14 +104,14 @@ pub mod test_where_builder {
                 table_alias: Some("t".to_string()),
                 field: "myfield1".to_string(),
                 operator: Operator::Eq,
-                value: Some(ConditionValue::Value(Value::String("MYVALUE".to_string()))),
+                value: Some(ConditionValue::Single(Value::String("MYVALUE".to_string()))),
                 logic: None,
             },
             ConditionBuilder {
                 table_alias: Some("t".to_string()),
                 field: "myfield2".to_string(),
                 operator: Operator::Eq,
-                value: Some(ConditionValue::Value(Value::Number(
+                value: Some(ConditionValue::Single(Value::Number(
                     Number::from_i128(128).unwrap(),
                 ))),
                 logic: Some(Logic::And),
@@ -132,7 +132,7 @@ pub mod test_where_builder {
                 table_alias: Some("t".to_string()),
                 field: "myfield3".to_string(),
                 operator: Operator::Eq,
-                value: Some(ConditionValue::Value(Value::String("MYVALUE".to_string()))),
+                value: Some(ConditionValue::Single(Value::String("MYVALUE".to_string()))),
                 logic: None,
             },
             ConditionBuilder {

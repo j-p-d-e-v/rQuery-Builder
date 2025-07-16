@@ -22,7 +22,10 @@ pub enum Operator {
 
     // Null Checks
     IsNull,  // Value is NULL
-    NotNull, // Value is NOT NULL
+    NotNull, // Value is NOT NULL,
+
+    // Range
+    Between
 }
 
 impl std::fmt::Display for Operator {
@@ -39,6 +42,7 @@ impl std::fmt::Display for Operator {
             Self::NotIn => "NOT IN",
             Self::IsNull => "IS NULL",
             Self::NotNull => "IS NOT NULL",
+            Self::Between => "BETWEEN",
         };
         write!(f, "{operator}")
     }
