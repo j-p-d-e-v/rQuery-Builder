@@ -65,6 +65,21 @@ impl SelectBuilder {
         self
     }
 
+    /// Defines columns for a query by combining a table alias with column names.
+    /// If no columns are specified, it defaults to selecting all columns using a wildcard.
+    ///
+    /// # Parameters
+    /// - `table_alias`: A string slice representing the alias of the table to prefix each column with.
+    /// - `values`: A vector of string slices representing the column names. If the vector is empty,
+    ///   a wildcard ("*") is used to select all columns from the specified table alias.
+    ///
+    /// # Returns
+    /// - A mutable reference to the current instance, enabling method chaining.
+    ///
+    /// # Example
+    /// ```ignore
+    /// columns("t", vec!["id", "name", "email"]);
+    /// ```
     pub fn columns(&mut self, table_alias: &str, values: Vec<&str>) -> &mut Self {
         let mut fields = if values.is_empty() {
             vec![format!("{table_alias}.*")]
@@ -77,6 +92,34 @@ impl SelectBuilder {
         self.fields.append(&mut fields);
         self
     }
+
+    /// Allows users to define columns with custom expressions or functions, such as CONCAT,
+    /// by specifying the raw column names or expressions as strings.
+    /// 
+    /// # Parameters
+    /// - `values`: A vector of string slices representing the columns or expressions to be used.
+    ///   If the vector is empty, a wildcard ("*") is used to select all columns.
+    ///
+    /// # Returns
+    /// - A mutable reference to the current instance, enabling method chaining.
+    ///
+    /// # Example
+    /// ```ignore
+    /// columns_raw(vec!["CONCAT(first_name, ' ', last_name) as full_name", "age"]);
+    /// ```
+    pub fn columns_raw(&mut self, values: Vec<&str>) -> &mut Self {
+        let mut fields = if values.is_empty() {
+            vec!["*".to_string()]
+        } else {
+            values
+                .iter()
+                .map(|value| value.to_string() )
+                .collect()
+        };
+        self.fields.append(&mut fields);
+        self
+    }
+
 
     pub fn order_by(&mut self, values: Vec<OrderByItem>) -> anyhow::Result<&mut Self> {
         if !values.is_empty() {
