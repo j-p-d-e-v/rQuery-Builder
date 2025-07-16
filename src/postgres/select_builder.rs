@@ -2,7 +2,6 @@ use crate::postgres::{
     ExpressionBuilder, GroupByBuilder, GroupByItem, JoinBuilder, JoinKind, OrderByBuilder,
     OrderByItem, WhereBuilder,
 };
-use anyhow::anyhow;
 use serde_json::Value;
 
 #[derive(Clone, Debug, Default)]
@@ -33,7 +32,6 @@ impl SelectBuilder {
         self.table = format!("{table} as {table_alias}");
         self
     }
-
 
     pub fn join(
         &mut self,
@@ -67,16 +65,17 @@ impl SelectBuilder {
         self
     }
 
-    pub fn columns(&mut self, table_alias: &str, values: Vec<&str>) -> anyhow::Result<&mut Self> {
-        if values.is_empty() {
-            return Err(anyhow!("select field value is empty"));
-        }
-        let mut fields: Vec<String> = values
-            .into_iter()
-            .map(|value| format!("{table_alias}.{value}"))
-            .collect();
+    pub fn columns(&mut self, table_alias: &str, values: Vec<&str>) -> &mut Self {
+        let mut fields = if values.is_empty() {
+            vec![format!("{table_alias}.*")]
+        } else {
+            values
+                .iter()
+                .map(|value| format!("{table_alias}.{value}"))
+                .collect()
+        };
         self.fields.append(&mut fields);
-        Ok(self)
+        self
     }
 
     pub fn order_by(&mut self, values: Vec<OrderByItem>) -> anyhow::Result<&mut Self> {
@@ -108,21 +107,11 @@ impl SelectBuilder {
     }
 
     pub fn build(&self) -> anyhow::Result<String> {
-        let fields = if self.fields.is_empty() {
-            "*".to_string()
-        } else {
-            self.fields.join(", ")
-        };
+        let fields = self.fields.join(", ");
         let mut statement: String = if self.distinct {
-            format!(
-                "SELECT DISTINCT {} FROM {}",
-                fields, self.table
-            )
+            format!("SELECT DISTINCT {} FROM {}", fields, self.table)
         } else {
-            format!(
-                "SELECT {} FROM {}",
-                fields, self.table
-            )
+            format!("SELECT {} FROM {}", fields, self.table)
         };
         if let Some(value) = &self.join_statement {
             statement = format!("{statement} {value}");
@@ -157,20 +146,20 @@ pub mod test_select_builder {
     #[tokio::test]
     async fn test_select_builder() {
         let mut builder = SelectBuilder::new();
-        let result = builder.table("mytable","t").build();
+        let result = builder.table("mytable", "t").columns("t", vec![]).build();
         assert!(result.is_ok(), "{:?}", result.err());
         assert_eq!(result.unwrap(), "SELECT * FROM mytable as t");
 
         let mut builder = SelectBuilder::new();
-        let result = builder.table("mytable","t").columns("t",vec![]);
-        assert!(result.is_err(), "expecting error for fields");
+        let result = builder.table("mytable", "t").columns("t", vec![]);
         let result = builder.build();
         assert!(result.is_ok(), "{:?}", result.err());
         assert_eq!(result.unwrap(), "SELECT * FROM mytable as t");
 
         let mut builder = SelectBuilder::new();
-        let result = builder.table("mytable","t").columns("t",vec!["myfield1", "myfield2"]);
-        assert!(result.is_ok(), "{:?}", result.err());
+        let result = builder
+            .table("mytable", "t")
+            .columns("t", vec!["myfield1", "myfield2"]);
         let result = builder.build();
         assert!(result.is_ok(), "{:?}", result.err());
         assert_eq!(
@@ -179,8 +168,9 @@ pub mod test_select_builder {
         );
 
         let mut builder = SelectBuilder::new();
-        let result = builder.table("mytable","t").columns("t",vec!["myfield1", "myfield2"]);
-        assert!(result.is_ok(), "{:?}", result.err());
+        let result = builder
+            .table("mytable", "t")
+            .columns("t", vec!["myfield1", "myfield2"]);
         let result = builder.order_by(vec![OrderByItem {
             table_alias: Some("t".to_string()),
             field: "myfield1".to_string(),
@@ -195,8 +185,9 @@ pub mod test_select_builder {
         );
 
         let mut builder = SelectBuilder::new();
-        let result = builder.table("mytable","t").columns("t",vec!["myfield1", "myfield2"]);
-        assert!(result.is_ok(), "{:?}", result.err());
+        let result = builder
+            .table("mytable", "t")
+            .columns("t", vec!["myfield1", "myfield2"]);
         let result = builder.order_by(vec![
             OrderByItem {
                 table_alias: None,
@@ -218,20 +209,21 @@ pub mod test_select_builder {
         );
 
         let mut builder = SelectBuilder::new();
-        let result = builder.table("mytable","t").columns("t",vec!["myfield1", "myfield2"]);
-        assert!(result.is_ok(), "{:?}", result.err());
-        let result = builder.order_by(vec![
-            OrderByItem {
-                table_alias: Some("t".to_string()),
-                field: "myfield1".to_string(),
-                sequence: Sequence::Asc,
-            },
-            OrderByItem {
-                table_alias: Some("t".to_string()),
-                field: "myfield2".to_string(),
-                sequence: Sequence::Desc,
-            },
-        ]);
+        let result = builder
+            .table("mytable", "t")
+            .columns("t", vec!["myfield1", "myfield2"])
+            .order_by(vec![
+                OrderByItem {
+                    table_alias: Some("t".to_string()),
+                    field: "myfield1".to_string(),
+                    sequence: Sequence::Asc,
+                },
+                OrderByItem {
+                    table_alias: Some("t".to_string()),
+                    field: "myfield2".to_string(),
+                    sequence: Sequence::Desc,
+                },
+            ]);
         assert!(result.is_ok(), "{:?}", result.err());
         let filter_clauses = vec![
             ConditionBuilder {
@@ -282,10 +274,9 @@ pub mod test_select_builder {
         )
         .unwrap();
         let result = builder
-            .table("orders","o")
+            .table("orders", "o")
             .join(JoinKind::Inner, "products", "p", vec![join_clause])
-            .columns("o",vec!["id", "user_id", "product_id"])
-            .unwrap()
+            .columns("o", vec!["id", "user_id", "product_id"])
             .limit(10)
             .offset(0)
             .build();
@@ -326,11 +317,10 @@ pub mod test_select_builder {
         )
         .unwrap();
         let result = builder
-            .table("orders","o")
+            .table("orders", "o")
             .join(JoinKind::Left, "products", "p", vec![join_clause.clone()])
             .filter(vec![filter_clause.clone()])
-            .columns("o",vec!["id", "user_id", "product_id"])
-            .unwrap()
+            .columns("o", vec!["id", "user_id", "product_id"])
             .limit(10)
             .offset(0)
             .build();
@@ -342,11 +332,10 @@ pub mod test_select_builder {
 
         let mut builder = SelectBuilder::new();
         let result = builder
-            .table("orders","o")
+            .table("orders", "o")
             .join(JoinKind::Left, "products", "p", vec![join_clause])
             .filter(vec![filter_clause])
-            .columns("o",vec!["id", "user_id", "product_id"])
-            .unwrap()
+            .columns("o", vec!["id", "user_id", "product_id"])
             .order_by(vec![OrderByItem {
                 table_alias: Some("o".to_string()),
                 field: "user_id".to_string(),
