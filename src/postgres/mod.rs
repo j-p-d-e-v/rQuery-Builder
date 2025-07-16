@@ -9,6 +9,7 @@ pub mod select_builder;
 pub mod table_columns_builder;
 pub mod where_builder;
 
+pub use select_builder::SelectBuilder;
 pub use condition_builder::{ConditionBuilder, ConditionValue};
 pub use expression_builder::ExpressionBuilder;
 pub use group_by_builder::{GroupByBuilder, GroupByItem};
