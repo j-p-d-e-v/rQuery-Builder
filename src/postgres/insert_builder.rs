@@ -7,6 +7,7 @@ pub struct InsertBuilder {
     pub table: String,
     pub fields: Vec<String>,
     pub values: Vec<Vec<Value>>,
+    pub returning_statement: Option<String>,
     pub placeholder_kind: PlaceholderKind,
 }
 
@@ -40,6 +41,19 @@ impl InsertBuilder {
         self.values.to_owned()
     }
 
+    pub fn returning(&mut self, values: Vec<&str>) -> &mut Self {
+        if !values.is_empty() {
+            self.returning_statement = Some(format!(
+                "RETURNING {}",
+                values
+                    .iter()
+                    .map(|v| v.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ));
+        }
+        self
+    }
     pub fn build(&self) -> anyhow::Result<String> {
         let fields = self.fields.join(", ");
         let mut value_counter: usize = 0;
@@ -61,7 +75,14 @@ impl InsertBuilder {
             })
             .collect();
         let values: String = values.join(", ");
-        let statement = format!("INSERT INTO {}({}) VALUES {}", self.table, fields, values);
+        let returning_statement: String = self
+            .returning_statement
+            .to_owned()
+            .unwrap_or("".to_string());
+        let statement = format!(
+            "INSERT INTO {}({}) VALUES {} {}",
+            self.table, fields, values, returning_statement
+        );
         Ok(statement.trim().to_string())
     }
 }
@@ -104,11 +125,12 @@ pub mod test_insert_builder {
             Value::String("jr@test.com".to_string()),
         ]);
         assert!(result.is_ok(), "{:?}", result.err());
-        let result = builder.build();
+        let result = builder.returning(vec!["name", "email"]).build();
         assert!(result.is_ok(), "{:?}", result.err());
         assert_eq!(
             result.unwrap(),
-            "INSERT INTO users(name, email) VALUES (?, ?), (?, ?)".to_string()
+            "INSERT INTO users(name, email) VALUES (?, ?), (?, ?) RETURNING name, email"
+                .to_string()
         );
     }
 }

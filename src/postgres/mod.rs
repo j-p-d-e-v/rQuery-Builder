@@ -7,7 +7,9 @@ pub mod logic;
 pub mod operator;
 pub mod order_by_builder;
 pub mod select_builder;
+pub mod set_builder;
 pub mod table_columns_builder;
+pub mod update_builder;
 pub mod where_builder;
 
 pub use condition_builder::{ConditionBuilder, ConditionValue};
@@ -18,5 +20,6 @@ pub use logic::Logic;
 pub use operator::Operator;
 pub use order_by_builder::{OrderByBuilder, OrderByItem, Sequence};
 pub use select_builder::SelectBuilder;
+pub use set_builder::{SetBuilder, SetFieldUpdate, SetValue};
 pub use table_columns_builder::TableColumnsBuilder;
 pub use where_builder::WhereBuilder;
