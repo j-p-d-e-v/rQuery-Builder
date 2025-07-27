@@ -1,7 +1,7 @@
 use crate::placeholder::PlaceholderKind;
 use crate::postgres::{
-    ExpressionBuilder, GroupByBuilder, GroupByItem, JoinBuilder, JoinKind, OrderByBuilder,
-    OrderByItem, WhereBuilder,
+    ExpressionBuilder, GroupByBuilder, GroupByItem, JoinBuilder, JoinKind, Operator,
+    OrderByBuilder, OrderByItem, WhereBuilder,
 };
 use serde_json::Value;
 
@@ -96,6 +96,16 @@ impl SelectBuilder {
         };
         self.fields.append(&mut fields);
         self
+    }
+
+    // TODO! JSONB
+    pub fn columns_jsonb(
+        &mut self,
+        jsonb_field_a: &str,
+        operator: Operator,
+        jsonb_field_b: &str,
+    ) -> &mut Self {
+        todo!("code here the logic for handling jsonb columns");
     }
 
     /// Allows users to define columns with custom expressions or functions, such as CONCAT,

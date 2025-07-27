@@ -44,7 +44,7 @@ Unlike most ORMs, `rQuery Builder` respects the syntax and features unique to ea
 - [x] `JOIN` (inner, left, etc.)  
 - [x] Table aliasing  
 - [x] Retrieve columns of a table  
-- [ ] JSONB filtering  
+- [ ] JSONB filtering(where), columns(select fields), group by and order by
 - [x] Placeholder Kinds/Types: (`?`,`$N`)
 
 #### INSERT
