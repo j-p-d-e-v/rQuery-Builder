@@ -26,6 +26,20 @@ pub enum Operator {
 
     // Range
     Between,
+
+    // Reference: https://neon.com/postgresql/postgresql-json-functions/postgresql-jsonb-operators
+    JsonbValue,       // ->
+    JsonbValueAsText, // ->>
+    JsonbContains,    // @>
+    JsonbContained,   // <@
+    JsonbHasKey,      // ?
+    JsonbHasAnyKeys,  // |?
+    JsonbHasAllKeys,  // ?&
+    JsonbConcatenate, // ||
+    JsonbRemoveKey,   // -
+    JsonbRemovePath,  // #-
+    JsonbHasPath,     // @?
+    JsonbPathExists,  // @@
 }
 
 impl std::fmt::Display for Operator {
@@ -43,6 +57,19 @@ impl std::fmt::Display for Operator {
             Self::IsNull => "IS NULL",
             Self::NotNull => "IS NOT NULL",
             Self::Between => "BETWEEN",
+            //JSONB Operators
+            Self::JsonbValue => "->",
+            Self::JsonbValueAsText => "->>",
+            Self::JsonbContains => "@>",
+            Self::JsonbContained => "<@",
+            Self::JsonbHasKey => "?",
+            Self::JsonbHasAnyKeys => "?|",
+            Self::JsonbHasAllKeys => "?&",
+            Self::JsonbConcatenate => "||",
+            Self::JsonbRemoveKey => "-",
+            Self::JsonbRemovePath => "#-",
+            Self::JsonbHasPath => "@?",
+            Self::JsonbPathExists => "@@",
         };
         write!(f, "{operator}")
     }
