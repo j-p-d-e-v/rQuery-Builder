@@ -58,8 +58,8 @@ Unlike most ORMs, `rQuery Builder` respects the syntax and features unique to ea
 - [x] Placeholder Kinds/Types: (`?`,`$N`)
 
 #### DELETE
-- [ ] `DELETE` queries  
-- [ ] Placeholder Kinds/Types: (`?`,`$N`)
+- [x] `DELETE` queries  
+- [x] Placeholder Kinds/Types: (`?`,`$N`)
 
 #### ACTUAL DB TESTING
 - [ ] `SELECT` queries

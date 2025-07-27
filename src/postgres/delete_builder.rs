@@ -1,6 +1,5 @@
 use crate::placeholder::PlaceholderKind;
 use crate::postgres::{ExpressionBuilder, WhereBuilder};
-use anyhow::anyhow;
 use serde_json::Value;
 
 #[derive(Clone, Debug, Default)]
@@ -24,7 +23,7 @@ impl DeleteBuilder {
 
     pub fn table(&mut self, table: &str, table_alias: Option<&str>) -> &mut Self {
         self.table = if let Some(alias) = table_alias {
-            format!("{} as {}", table, alias)
+            format!("{table} as {alias}")
         } else {
             table.to_string()
         };
@@ -33,7 +32,7 @@ impl DeleteBuilder {
 
     pub fn using(&mut self, table: &str, table_alias: Option<&str>) -> &mut Self {
         self.using_table = if let Some(alias) = table_alias {
-            Some(format!("{} as {}", table, alias))
+            Some(format!("USING {table} as {alias}"))
         } else {
             Some(table.to_string())
         };
@@ -135,5 +134,61 @@ pub mod test_delete_builder {
             "DELETE FROM users as u WHERE u.email = ? RETURNING u.email, u.name"
         );
         assert_eq!(builder.get_values().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_delete_dollar_sequence() {
+        let mut builder = DeleteBuilder::new(PlaceholderKind::DollarSequential);
+        builder
+            .table("users", Some("u"))
+            .filter(vec![ExpressionBuilder::build(
+                vec![ConditionBuilder {
+                    table_alias: Some("u".to_string()),
+                    field: "email".to_string(),
+                    logic: None,
+                    operator: Operator::Eq,
+                    value: Some(ConditionValue::Single(Value::String(
+                        "test1@example.com".to_string(),
+                    ))),
+                }],
+                None,
+            )
+            .unwrap()]);
+        let statement = builder.returning(vec!["u.email", "u.name"]).build();
+        assert!(statement.is_ok(), "{:?}", statement.err());
+        assert_eq!(
+            statement.unwrap(),
+            "DELETE FROM users as u WHERE u.email = $1 RETURNING u.email, u.name"
+        );
+        assert_eq!(builder.get_values().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_delete_using() {
+        let mut builder = DeleteBuilder::new(PlaceholderKind::DollarSequential);
+        builder
+            .table("users", Some("u"))
+            .using("orders", Some("o"))
+            .filter(vec![ExpressionBuilder::build(
+                vec![ConditionBuilder {
+                    table_alias: Some("u".to_string()),
+                    field: "id".to_string(),
+                    logic: None,
+                    operator: Operator::Eq,
+                    value: Some(ConditionValue::Field(
+                        "o".to_string(),
+                        "user_id".to_string(),
+                    )),
+                }],
+                None,
+            )
+            .unwrap()]);
+        let statement = builder.returning(vec!["u.email", "u.name"]).build();
+        assert!(statement.is_ok(), "{:?}", statement.err());
+        assert_eq!(
+            statement.unwrap(),
+            "DELETE FROM users as u USING orders as o WHERE u.id = o.user_id RETURNING u.email, u.name"
+        );
+        assert_eq!(builder.get_values().len(), 0);
     }
 }
