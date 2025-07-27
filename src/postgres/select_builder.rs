@@ -9,14 +9,14 @@ use serde_json::Value;
 pub struct SelectBuilder {
     pub distinct: bool,
     pub table: String,
-    pub fields: Vec<String>,
-    pub limit: Option<usize>,
-    pub offset: Option<usize>,
+    fields: Vec<String>,
+    limit: Option<usize>,
+    offset: Option<usize>,
     pub values: Vec<Value>,
-    pub filter_statement: Option<String>,
-    pub join_statement: Option<String>,
-    pub group_by_statement: Option<String>,
-    pub order_by_statement: Option<String>,
+    filter_statement: Option<String>,
+    join_statement: Option<String>,
+    group_by_statement: Option<String>,
+    order_by_statement: Option<String>,
     pub placeholder_kind: PlaceholderKind,
 }
 
