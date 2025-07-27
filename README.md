@@ -53,9 +53,9 @@ Unlike most ORMs, `rQuery Builder` respects the syntax and features unique to ea
 - [x] Placeholder Kinds/Types: (`?`,`$N`)
 
 #### UPDATE
-- [ ] Single row update  
-- [ ] Bulk update  
-- [ ] Placeholder Kinds/Types: (`?`,`$N`)
+- [x] Single row update  
+- [x] Bulk update  
+- [x] Placeholder Kinds/Types: (`?`,`$N`)
 
 #### DELETE
 - [ ] `DELETE` queries  
