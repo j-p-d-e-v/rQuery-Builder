@@ -61,6 +61,12 @@ Unlike most ORMs, `rQuery Builder` respects the syntax and features unique to ea
 - [ ] `DELETE` queries  
 - [ ] Placeholder Kinds/Types: (`?`,`$N`)
 
+#### ACTUAL DB TESTING
+- [ ] `SELECT` queries
+- [ ] `INSERT` queries
+- [ ] `UPDATE` queries
+- [ ] `DELETE` queries
+
 ---
 
 ### 🐬 MySQL Support *(Planned)*

@@ -1,4 +1,5 @@
 pub mod condition_builder;
+pub mod delete_builder;
 pub mod expression_builder;
 pub mod group_by_builder;
 pub mod insert_builder;
@@ -22,4 +23,5 @@ pub use order_by_builder::{OrderByBuilder, OrderByItem, Sequence};
 pub use select_builder::SelectBuilder;
 pub use set_builder::{SetBuilder, SetFieldUpdate, SetValue};
 pub use table_columns_builder::TableColumnsBuilder;
+pub use update_builder::UpdateBuilder;
 pub use where_builder::WhereBuilder;
